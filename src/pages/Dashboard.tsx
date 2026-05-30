@@ -5,6 +5,8 @@ import { AmbientBackground } from '../components/AmbientBackground';
 import { MemoryCard } from '../components/MemoryCard';
 import { useMemoryStore } from '../store/useMemoryStore';
 import { CreateMemoryModal } from '../components/CreateMemoryModal';
+import { ViewMemoryModal } from '../components/ViewMemoryModal'; // 1. We import the new viewer
+import type { Memory } from '../types'; // 2. We import the Memory type
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -15,13 +17,12 @@ const containerVariants = {
 };
 
 export const Dashboard = () => {
-  // 1. Pull both the memories array AND the fetch function from our store
   const memories = useMemoryStore((state) => state.recentMemories);
   const fetchMemories = useMemoryStore((state) => state.fetchMemories);
   
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedMemory, setSelectedMemory] = useState<Memory | null>(null); // 3. State to hold the clicked memory
 
-  // 2. This runs exactly once when the dashboard opens, fetching your saved data
   useEffect(() => {
     fetchMemories();
   }, [fetchMemories]);
@@ -92,7 +93,8 @@ export const Dashboard = () => {
                 <MemoryCard 
                   key={memory.id} 
                   memory={memory} 
-                  onClick={(id) => console.log('Navigate to memory:', id)} 
+                  // 4. Pass the clicked memory into the new state
+                  onClick={() => setSelectedMemory(memory)} 
                 />
               ))
             )}
@@ -103,6 +105,13 @@ export const Dashboard = () => {
       <CreateMemoryModal 
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)} 
+      />
+
+      {/* 5. Drop the viewer into the screen */}
+      <ViewMemoryModal 
+        memory={selectedMemory}
+        isOpen={!!selectedMemory}
+        onClose={() => setSelectedMemory(null)}
       />
     </div>
   );

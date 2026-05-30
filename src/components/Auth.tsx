@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
+import { Eye, EyeOff } from 'lucide-react'; // Added the eye icons here
 import { supabase } from '../lib/supabase';
 import { AmbientBackground } from './AmbientBackground';
 
@@ -8,6 +9,7 @@ export const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false); // New state for the toggle
   const [error, setError] = useState<string | null>(null);
 
   const handleAuth = async (e: React.FormEvent) => {
@@ -22,7 +24,6 @@ export const Auth = () => {
       } else {
         const { error } = await supabase.auth.signUp({ email, password });
         if (error) throw error;
-        // Auto-login after signup is usually handled by Supabase if email confirmation is off
       }
     } catch (err: any) {
       setError(err.message);
@@ -63,15 +64,24 @@ export const Auth = () => {
               required
             />
           </div>
-          <div>
+          
+          {/* We wrapped the password input in a relative container to position the eye button inside it */}
+          <div className="relative">
             <input
-              type="password"
+              type={showPassword ? "text" : "password"}
               placeholder="Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full bg-vault-950/50 text-white placeholder:text-zinc-600 px-4 py-3 rounded-xl border border-vault-800 focus:outline-none focus:border-zinc-500 transition-colors"
+              className="w-full bg-vault-950/50 text-white placeholder:text-zinc-600 px-4 py-3 rounded-xl border border-vault-800 focus:outline-none focus:border-zinc-500 transition-colors pr-12"
               required
             />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white transition-colors focus:outline-none"
+            >
+              {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+            </button>
           </div>
 
           <button

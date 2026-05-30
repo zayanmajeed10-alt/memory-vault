@@ -1,110 +1,282 @@
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { X } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { X, Image, Mic, Square, Trash2 } from 'lucide-react';
 import { useMemoryStore } from '../store/useMemoryStore';
+import { supabase } from '../lib/supabase';
 import type { Mood } from '../types';
 
-interface Props {
+interface CreateMemoryModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
 const MOODS: Mood[] = ['peaceful', 'nostalgic', 'lost', 'grateful', 'hopeful', 'overwhelmed'];
 
-export const CreateMemoryModal: React.FC<Props> = ({ isOpen, onClose }) => {
+export const CreateMemoryModal = ({ isOpen, onClose }: CreateMemoryModalProps) => {
   const addMemory = useMemoryStore((state) => state.addMemory);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
+  // Original Form State
   const [title, setTitle] = useState('');
   const [reflection, setReflection] = useState('');
   const [mood, setMood] = useState<Mood>('peaceful');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Media Files State
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  
+  // Audio Recording State
+  const [isRecording, setIsRecording] = useState(false);
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+  const [audioPreview, setAudioPreview] = useState<string | null>(null);
+  
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  if (!isOpen) return null;
+
+  // Handle Image Selection
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setImageFile(file);
+      setImagePreview(URL.createObjectURL(file));
+    }
+  };
+
+  // Audio Recording Logic
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) audioChunksRef.current.push(event.data);
+      };
+
+      mediaRecorder.onstop = () => {
+        // FIX: Let the browser use its native audio format instead of forcing WAV
+        const actualMimeType = mediaRecorder.mimeType || 'audio/webm';
+        const blob = new Blob(audioChunksRef.current, { type: actualMimeType });
+        
+        setAudioBlob(blob);
+        setAudioPreview(URL.createObjectURL(blob));
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+    } catch (err) {
+      console.error('Microphone access denied:', err);
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+    }
+  };
+
+  const uploadMediaFile = async (fileOrBlob: File | Blob, folder: 'images' | 'audio', extension: string) => {
+    const fileName = `${Math.random()}.${extension}`;
+    const filePath = `${folder}/${fileName}`;
+
+    const { error } = await supabase.storage
+      .from('vault-media')
+      .upload(filePath, fileOrBlob);
+
+    if (error) throw error;
+    return filePath; 
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !reflection.trim()) return;
+    setIsSubmitting(true);
 
-    addMemory({ title, reflection, mood });
-    
-    // Reset and close
-    setTitle('');
-    setReflection('');
-    setMood('peaceful');
-    onClose();
+    try {
+      let image_url = undefined;
+      let audio_url = undefined;
+
+      if (imageFile) {
+        const ext = imageFile.name.split('.').pop() || 'jpg';
+        image_url = await uploadMediaFile(imageFile, 'images', ext);
+      }
+      
+      if (audioBlob) {
+        // FIX: dynamically assign the correct file extension so playback doesn't break
+        const ext = audioBlob.type.includes('mp4') ? 'm4a' : 'webm';
+        audio_url = await uploadMediaFile(audioBlob, 'audio', ext);
+      }
+      
+      await addMemory({
+        title,
+        reflection,
+        mood,
+        image_url,
+        audio_url
+      });
+
+      // Reset state and close
+      setTitle('');
+      setReflection('');
+      setMood('peaceful');
+      setImageFile(null);
+      setImagePreview(null);
+      setAudioBlob(null);
+      setAudioPreview(null);
+      onClose();
+    } catch (err) {
+      console.error('Error saving memory:', err);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <>
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
-          />
-          <motion.div
-            initial={{ opacity: 0, y: 100, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            className="fixed top-1/4 left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:w-full md:max-w-xl bg-vault-900 border border-vault-800 p-6 md:p-8 rounded-3xl z-50 shadow-2xl"
-          >
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-serif text-white">Preserve a Memory</h2>
-              <button onClick={onClose} className="text-zinc-500 hover:text-white transition-colors">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+      <div className="w-full max-w-lg bg-vault-900 border border-vault-800 rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+        
+        <div className="flex items-center justify-between p-6 border-b border-vault-800">
+          <h2 className="text-xl font-serif text-white">Preserve a Memory</h2>
+          <button onClick={onClose} className="text-zinc-500 hover:text-white transition-colors">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
 
-            <form onSubmit={handleSubmit} className="space-y-5">
-              <input
-                type="text"
-                placeholder="Give this moment a title..."
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                className="w-full bg-transparent text-xl text-white placeholder:text-zinc-600 focus:outline-none border-b border-vault-800 pb-2 focus:border-zinc-500 transition-colors"
-                autoFocus
-              />
-              
-              <textarea
-                placeholder="What are you thinking about?"
-                value={reflection}
-                onChange={(e) => setReflection(e.target.value)}
-                className="w-full bg-transparent text-zinc-300 placeholder:text-zinc-600 focus:outline-none resize-none h-32 leading-relaxed"
-              />
+        <form onSubmit={handleSubmit} className="p-6 space-y-5 overflow-y-auto flex-1">
+          <div>
+            <input
+              type="text"
+              placeholder="Give this moment a title..."
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="w-full bg-transparent text-xl text-white placeholder:text-zinc-600 focus:outline-none border-b border-vault-800 pb-2 focus:border-zinc-500 transition-colors"
+              autoFocus
+              required
+            />
+          </div>
 
-              <div className="pt-4 border-t border-vault-800">
-                <p className="text-xs text-zinc-500 uppercase tracking-wider mb-3">Current Mood</p>
-                <div className="flex flex-wrap gap-2">
-                  {MOODS.map((m) => (
-                    <button
-                      key={m}
-                      type="button"
-                      onClick={() => setMood(m)}
-                      className={`px-3 py-1.5 rounded-full text-xs font-medium capitalize transition-colors ${
-                        mood === m 
-                          ? 'bg-white text-black' 
-                          : 'bg-vault-800 text-zinc-400 hover:bg-vault-800/80'
-                      }`}
-                    >
-                      {m}
-                    </button>
-                  ))}
+          <div>
+            <textarea
+              placeholder="What are you thinking about?"
+              value={reflection}
+              onChange={(e) => setReflection(e.target.value)}
+              rows={4}
+              className="w-full bg-transparent text-zinc-300 placeholder:text-zinc-600 focus:outline-none resize-none leading-relaxed"
+              required
+            />
+          </div>
+
+          {/* Media Previews Panel */}
+          {(imagePreview || audioPreview || isRecording) && (
+            <div className="p-4 bg-vault-950/40 border border-vault-800 rounded-xl space-y-3">
+              {imagePreview && (
+                <div className="relative group rounded-lg overflow-hidden border border-vault-800 max-h-48">
+                  <img src={imagePreview} alt="Upload preview" className="w-full h-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => { setImageFile(null); setImagePreview(null); }}
+                    className="absolute top-2 right-2 p-1.5 bg-black/60 rounded-full text-zinc-400 hover:text-white transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </div>
-              </div>
+              )}
 
-              <div className="pt-4 flex justify-end">
+              {isRecording && (
+                <div className="flex items-center justify-between py-2 text-sm text-zinc-400">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                    <span>Recording audio...</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={stopRecording}
+                    className="flex items-center gap-1 text-red-400 hover:text-red-300 font-medium"
+                  >
+                    <Square className="w-4 h-4" /> Stop
+                  </button>
+                </div>
+              )}
+
+              {audioPreview && !isRecording && (
+                <div className="flex items-center justify-between py-1">
+                  <audio src={audioPreview} controls className="h-8 w-2/3 accent-white" />
+                  <button
+                    type="button"
+                    onClick={() => { setAudioBlob(null); setAudioPreview(null); }}
+                    className="text-zinc-500 hover:text-white p-1"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Media Actions */}
+          <div className="flex items-center gap-3 border-t border-b border-vault-800/50 py-3">
+            <input
+              type="file"
+              accept="image/*"
+              ref={fileInputRef}
+              onChange={handleImageChange}
+              className="hidden"
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="flex items-center gap-2 text-xs text-zinc-400 hover:text-white bg-vault-950/50 px-3 py-2 rounded-xl border border-vault-800 transition-colors"
+            >
+              <Image className="w-4 h-4" /> Attach Image
+            </button>
+
+            {!isRecording && !audioPreview && (
+              <button
+                type="button"
+                onClick={startRecording}
+                className="flex items-center gap-2 text-xs text-zinc-400 hover:text-white bg-vault-950/50 px-3 py-2 rounded-xl border border-vault-800 transition-colors"
+              >
+                <Mic className="w-4 h-4" /> Record Voice Memo
+              </button>
+            )}
+          </div>
+
+          <div className="pt-2">
+            <p className="text-xs text-zinc-500 uppercase tracking-wider mb-3">Current Mood</p>
+            <div className="flex flex-wrap gap-2">
+              {MOODS.map((m) => (
                 <button
-                  type="submit"
-                  disabled={!title.trim() || !reflection.trim()}
-                  className="px-6 py-2.5 bg-white text-black text-sm font-medium rounded-full disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105 active:scale-95 transition-all"
+                  key={m}
+                  type="button"
+                  onClick={() => setMood(m)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium capitalize transition-colors ${
+                    mood === m 
+                      ? 'bg-white text-black' 
+                      : 'bg-vault-800 text-zinc-400 hover:bg-vault-800/80'
+                  }`}
                 >
-                  Save to Vault
+                  {m}
                 </button>
-              </div>
-            </form>
-          </motion.div>
-        </>
-      )}
-    </AnimatePresence>
+              ))}
+            </div>
+          </div>
+
+          <div className="pt-2 flex justify-end">
+            <button
+              type="submit"
+              disabled={isSubmitting || !title.trim() || !reflection.trim()}
+              className="px-6 py-2.5 bg-white text-black text-sm font-medium rounded-full disabled:opacity-50 hover:scale-105 active:scale-95 transition-all"
+            >
+              {isSubmitting ? 'Securing Media...' : 'Save to Vault'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   );
 };
