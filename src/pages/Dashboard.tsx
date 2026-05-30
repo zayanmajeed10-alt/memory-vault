@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Lock } from 'lucide-react';
+import { Plus, Lock, ScanFace } from 'lucide-react';
 import { AmbientBackground } from '../components/AmbientBackground';
 import { MemoryCard } from '../components/MemoryCard';
 import { useMemoryStore } from '../store/useMemoryStore';
@@ -37,10 +37,20 @@ export const Dashboard = () => {
     return "The day is done, but the mind is still awake.";
   }, []);
 
-  // Securely destroy the session and lock the vault
   const handleLockVault = async () => {
     const { error } = await supabase.auth.signOut();
     if (error) console.error('Error locking vault:', error.message);
+  };
+
+  // The new function that securely binds your Face ID to your account
+  const handleLinkFaceID = async () => {
+    try {
+      const { error } = await supabase.auth.registerPasskey();
+      if (error) throw error;
+      alert("Biometrics successfully locked in. You can now use Face ID to enter your vault.");
+    } catch (err: any) {
+      alert(err.message);
+    }
   };
 
   return (
@@ -64,6 +74,14 @@ export const Dashboard = () => {
           </div>
           
           <div className="flex items-center gap-3">
+            <button 
+              onClick={handleLinkFaceID}
+              title="Link Face ID"
+              className="flex items-center justify-center w-12 h-12 rounded-full bg-vault-900 border border-vault-800 text-zinc-400 hover:text-white hover:bg-vault-800 transition-all"
+            >
+              <ScanFace className="w-5 h-5" />
+            </button>
+
             <button 
               onClick={handleLockVault}
               title="Lock Vault"
