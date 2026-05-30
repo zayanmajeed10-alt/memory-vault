@@ -1,12 +1,13 @@
 import { useMemo, useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Plus } from 'lucide-react';
+import { Plus, Lock } from 'lucide-react';
 import { AmbientBackground } from '../components/AmbientBackground';
 import { MemoryCard } from '../components/MemoryCard';
 import { useMemoryStore } from '../store/useMemoryStore';
 import { CreateMemoryModal } from '../components/CreateMemoryModal';
-import { ViewMemoryModal } from '../components/ViewMemoryModal'; // 1. We import the new viewer
-import type { Memory } from '../types'; // 2. We import the Memory type
+import { ViewMemoryModal } from '../components/ViewMemoryModal';
+import { supabase } from '../lib/supabase';
+import type { Memory } from '../types';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -21,7 +22,7 @@ export const Dashboard = () => {
   const fetchMemories = useMemoryStore((state) => state.fetchMemories);
   
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedMemory, setSelectedMemory] = useState<Memory | null>(null); // 3. State to hold the clicked memory
+  const [selectedMemory, setSelectedMemory] = useState<Memory | null>(null);
 
   useEffect(() => {
     fetchMemories();
@@ -29,12 +30,18 @@ export const Dashboard = () => {
 
   const greeting = useMemo(() => {
     const hour = new Date().getHours();
-    if (hour < 5) return "Late night reflections.";
-    if (hour < 12) return "A quiet morning.";
-    if (hour < 17) return "Good afternoon.";
-    if (hour < 21) return "Evening thoughts.";
-    return "Late night reflections.";
+    if (hour < 5) return "The quiet hours are when the best things are forged.";
+    if (hour < 12) return "A quiet morning. A blank canvas.";
+    if (hour < 17) return "Keep the momentum going.";
+    if (hour < 21) return "Evening thoughts. Time to reflect.";
+    return "The day is done, but the mind is still awake.";
   }, []);
+
+  // Securely destroy the session and lock the vault
+  const handleLockVault = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) console.error('Error locking vault:', error.message);
+  };
 
   return (
     <div className="min-h-screen text-vault-100 font-sans selection:bg-zinc-800">
@@ -45,22 +52,34 @@ export const Dashboard = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-          className="mb-16"
+          className="mb-16 flex flex-col md:flex-row md:items-end justify-between gap-6"
         >
-          <p className="text-zinc-500 text-sm md:text-base font-medium tracking-wide uppercase mb-3">
-            {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-          </p>
-          <h1 className="text-4xl md:text-5xl font-serif tracking-tight text-white mb-6">
-            {greeting}
-          </h1>
+          <div>
+            <p className="text-zinc-500 text-sm md:text-base font-medium tracking-wide uppercase mb-3">
+              {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+            </p>
+            <h1 className="text-4xl md:text-5xl font-serif tracking-tight text-white">
+              {greeting}
+            </h1>
+          </div>
           
-          <button 
-            onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-2 px-5 py-3 rounded-full bg-white text-black text-sm font-medium transition-transform hover:scale-105 active:scale-95 shadow-[0_0_20px_rgba(255,255,255,0.1)]"
-          >
-            <Plus className="w-4 h-4" />
-            Preserve a Memory
-          </button>
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={handleLockVault}
+              title="Lock Vault"
+              className="flex items-center justify-center w-12 h-12 rounded-full bg-vault-900 border border-vault-800 text-zinc-400 hover:text-white hover:bg-vault-800 transition-all"
+            >
+              <Lock className="w-5 h-5" />
+            </button>
+
+            <button 
+              onClick={() => setIsModalOpen(true)}
+              className="flex items-center gap-2 px-5 py-3 h-12 rounded-full bg-white text-black text-sm font-medium transition-transform hover:scale-105 active:scale-95 shadow-[0_0_20px_rgba(255,255,255,0.1)]"
+            >
+              <Plus className="w-4 h-4" />
+              Preserve a Memory
+            </button>
+          </div>
         </motion.header>
 
         <section>
@@ -93,7 +112,6 @@ export const Dashboard = () => {
                 <MemoryCard 
                   key={memory.id} 
                   memory={memory} 
-                  // 4. Pass the clicked memory into the new state
                   onClick={() => setSelectedMemory(memory)} 
                 />
               ))
@@ -107,7 +125,6 @@ export const Dashboard = () => {
         onClose={() => setIsModalOpen(false)} 
       />
 
-      {/* 5. Drop the viewer into the screen */}
       <ViewMemoryModal 
         memory={selectedMemory}
         isOpen={!!selectedMemory}
