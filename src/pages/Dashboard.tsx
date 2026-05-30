@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Plus } from 'lucide-react';
 import { AmbientBackground } from '../components/AmbientBackground';
