@@ -6,13 +6,14 @@ interface MemoryStore {
   recentMemories: Memory[];
   fetchMemories: () => Promise<void>;
   addMemory: (memory: Omit<Memory, 'id' | 'user_id' | 'created_at'>) => Promise<void>;
+  // 1. Added to the interface here:
+  deleteMemory: (id: string) => Promise<void>; 
 }
 
 export const useMemoryStore = create<MemoryStore>((set) => ({
   recentMemories: [], 
 
   fetchMemories: async () => {
-    // Only fetch if a user is logged in
     const { data: session } = await supabase.auth.getSession();
     if (!session.session?.user) return;
 
@@ -29,7 +30,6 @@ export const useMemoryStore = create<MemoryStore>((set) => ({
   },
 
   addMemory: async (newMemoryData) => {
-    // 1. Get the actual user ID from the active secure session
     const { data: session } = await supabase.auth.getSession();
     const activeUserId = session.session?.user.id;
 
@@ -38,7 +38,6 @@ export const useMemoryStore = create<MemoryStore>((set) => ({
       return;
     }
     
-    // 2. Insert the memory attached to the real user ID
     const { data, error } = await supabase
       .from('memories')
       .insert([{ 
@@ -54,6 +53,22 @@ export const useMemoryStore = create<MemoryStore>((set) => ({
       set((state) => ({
         recentMemories: [data, ...state.recentMemories]
       }));
+    }
+  }, // <-- Notice the comma added here before the new function
+
+  // 2. Added the actual delete logic here at the bottom:
+  deleteMemory: async (id: string) => {
+    try {
+      const { error } = await supabase.from('memories').delete().eq('id', id);
+      if (error) throw error;
+      
+      // Instantly remove it from the UI
+      set((state) => ({
+        recentMemories: state.recentMemories.filter((m) => m.id !== id),
+      }));
+    } catch (error) {
+      console.error('Error deleting memory:', error);
+      throw error;
     }
   }
 }));

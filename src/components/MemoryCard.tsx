@@ -1,70 +1,60 @@
-import React from 'react';
-import { motion } from 'framer-motion';
-import { Play, MapPin, Calendar } from 'lucide-react';
-import { format } from 'date-fns';
+import { Calendar, Trash2, Image as ImageIcon, Mic } from 'lucide-react';
 import type { Memory } from '../types';
+import { useMemoryStore } from '../store/useMemoryStore';
 
-interface MemoryCardProps {
+interface Props {
   memory: Memory;
-  onClick: (id: string) => void;
+  onClick: () => void;
 }
 
-const moodColors: Record<string, string> = {
-  peaceful: 'text-emerald-400/80 bg-emerald-400/10',
-  nostalgic: 'text-amber-400/80 bg-amber-400/10',
-  lost: 'text-indigo-400/80 bg-indigo-400/10',
-  grateful: 'text-rose-400/80 bg-rose-400/10',
-  hopeful: 'text-sky-400/80 bg-sky-400/10',
-  overwhelmed: 'text-zinc-400/80 bg-zinc-400/10',
-};
+export const MemoryCard = ({ memory, onClick }: Props) => {
+  const deleteMemory = useMemoryStore((state) => state.deleteMemory);
 
-export const MemoryCard: React.FC<MemoryCardProps> = ({ memory, onClick }) => {
+  const handleDelete = (e: React.MouseEvent) => {
+    e.stopPropagation(); // This stops the click from opening the viewer!
+    if (window.confirm("Are you sure you want to permanently delete this memory?")) {
+      deleteMemory(memory.id);
+    }
+  };
+
+  const formattedDate = new Date(memory.created_at).toLocaleDateString('en-US', {
+    month: 'short', day: 'numeric', year: 'numeric'
+  });
+
   return (
-    <motion.button
-      onClick={() => onClick(memory.id)}
-      layoutId={`memory-card-${memory.id}`}
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.95 }}
-      whileHover={{ scale: 1.01, backgroundColor: 'rgba(28, 28, 31, 0.7)' }}
-      whileTap={{ scale: 0.98 }}
-      className="w-full text-left flex flex-col gap-4 p-5 md:p-6 rounded-2xl bg-vault-900/40 backdrop-blur-md border border-vault-800/50 transition-colors duration-300"
+    <div 
+      onClick={onClick}
+      className="group relative p-5 md:p-6 rounded-3xl bg-vault-900/40 border border-vault-800 hover:bg-vault-800/60 hover:border-vault-700 transition-all cursor-pointer flex flex-col gap-3"
     >
-      <div className="flex justify-between items-start w-full">
-        <span className={`px-2.5 py-1 text-xs tracking-wider uppercase rounded-full font-medium ${moodColors[memory.mood]}`}>
+      <div className="flex items-center justify-between">
+        <span className="px-3 py-1 text-xs font-medium uppercase tracking-wider rounded-full bg-vault-950 text-zinc-400">
           {memory.mood}
         </span>
-        <span className="flex items-center gap-1.5 text-xs text-zinc-500 font-medium">
-          <Calendar className="w-3.5 h-3.5" />
-          {format(new Date(memory.created_at), 'MMM d, yyyy')}
-        </span>
+        <div className="flex items-center gap-4">
+          <span className="flex items-center gap-1.5 text-xs text-zinc-500">
+            <Calendar className="w-3.5 h-3.5" />
+            {formattedDate}
+          </span>
+          {/* Here is the new Delete Button */}
+          <button 
+            onClick={handleDelete}
+            className="text-zinc-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity p-1"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
-      <div className="space-y-2">
-        <h3 className="text-xl md:text-2xl font-serif text-vault-100 font-medium tracking-tight">
-          {memory.title}
-        </h3>
-        <p className="text-zinc-400 text-sm md:text-base leading-relaxed line-clamp-3">
-          {memory.reflection}
-        </p>
-      </div>
+      <h3 className="text-xl font-serif text-white">{memory.title}</h3>
+      <p className="text-sm text-zinc-400 line-clamp-2 leading-relaxed">{memory.reflection}</p>
 
-      {(memory.location || memory.audio_url) && (
-        <div className="flex items-center gap-4 mt-2 pt-4 border-t border-vault-800/50 w-full">
-          {memory.location && (
-            <div className="flex items-center gap-1.5 text-xs text-zinc-500">
-              <MapPin className="w-3.5 h-3.5" />
-              {memory.location}
-            </div>
-          )}
-          {memory.audio_url && (
-            <div className="flex items-center gap-1.5 text-xs text-zinc-500">
-              <Play className="w-3.5 h-3.5" />
-              Voice Note
-            </div>
-          )}
+      {/* Media Indicators */}
+      {(memory.image_url || memory.audio_url) && (
+        <div className="flex items-center gap-3 pt-2 mt-2 border-t border-vault-800/50 text-zinc-500">
+          {memory.image_url && <ImageIcon className="w-4 h-4" />}
+          {memory.audio_url && <Mic className="w-4 h-4" />}
         </div>
       )}
-    </motion.button>
+    </div>
   );
 };
