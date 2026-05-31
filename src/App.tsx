@@ -3,6 +3,7 @@ import { supabase } from './lib/supabase';
 import { Dashboard } from './pages/Dashboard';
 import { Auth } from './components/Auth';
 import type { Session } from '@supabase/supabase-js';
+import { Analytics } from '@vercel/analytics/react';
 
 export default function App() {
   const [session, setSession] = useState<Session | null>(null);
@@ -32,5 +33,10 @@ export default function App() {
   }
 
   // If no secure session, show the lock screen. Otherwise, show the vault.
-  return !session ? <Auth /> : <Dashboard />;
+  return (
+    <>
+      {!session ? <Auth /> : <Dashboard />}
+      <Analytics />
+    </>
+  );
 }
