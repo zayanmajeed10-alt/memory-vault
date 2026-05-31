@@ -1,4 +1,4 @@
-import { X, Lock, ScanFace, LogOut, User } from 'lucide-react';
+import { X, ScanFace, LogOut, User } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface Props {
