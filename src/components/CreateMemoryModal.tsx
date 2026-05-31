@@ -1,6 +1,5 @@
 import { useState, useRef } from 'react';
 import { X, Image, Mic, Square, Trash2 } from 'lucide-react';
-// NEW: Imported motion for the smooth dropdown animation
 import { motion } from 'framer-motion'; 
 import { useMemoryStore } from '../store/useMemoryStore';
 import { supabase } from '../lib/supabase';
@@ -22,7 +21,7 @@ export const CreateMemoryModal = ({ isOpen, onClose }: CreateMemoryModalProps) =
   const [reflection, setReflection] = useState('');
   const [mood, setMood] = useState<Mood>('peaceful');
 
-  // NEW: Time Capsule State
+  // Time Capsule State
   const [isSealed, setIsSealed] = useState(false);
   const [unlockDate, setUnlockDate] = useState('');
 
@@ -122,7 +121,6 @@ export const CreateMemoryModal = ({ isOpen, onClose }: CreateMemoryModalProps) =
         mood,
         image_url,
         audio_url,
-        // NEW: Injects the unlock date into the database if the vault is sealed
         unlock_date: isSealed && unlockDate ? new Date(unlockDate).toISOString() : null, 
       });
 
@@ -134,8 +132,8 @@ export const CreateMemoryModal = ({ isOpen, onClose }: CreateMemoryModalProps) =
       setImagePreview(null);
       setAudioBlob(null);
       setAudioPreview(null);
-      setIsSealed(false); // NEW: Reset seal
-      setUnlockDate('');  // NEW: Reset date
+      setIsSealed(false);
+      setUnlockDate('');
       onClose();
     } catch (err) {
       console.error('Error saving memory:', err);
@@ -145,17 +143,22 @@ export const CreateMemoryModal = ({ isOpen, onClose }: CreateMemoryModalProps) =
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-      <div className="w-full max-w-lg bg-vault-900 border border-vault-800 rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+    // Responsive background: pushes content to bottom on mobile, centers on desktop
+    <div className="fixed inset-0 z-50 flex flex-col justify-end md:items-center md:justify-center bg-black/80 backdrop-blur-md md:p-4 animate-in fade-in duration-300">
+      
+      {/* Responsive Modal: 100dvh (Full height) on mobile, auto height on desktop */}
+      <div className="w-full h-[100dvh] md:h-auto md:max-h-[90vh] max-w-lg bg-vault-900 md:border border-vault-800 md:rounded-3xl flex flex-col animate-in slide-in-from-bottom-full md:slide-in-from-bottom-8 duration-500 overflow-hidden">
         
-        <div className="flex items-center justify-between p-6 border-b border-vault-800">
+        {/* Header */}
+        <div className="flex items-center justify-between p-6 md:p-6 border-b border-vault-800 shrink-0 bg-vault-900 z-10">
           <h2 className="text-xl font-serif text-white">Preserve a Memory</h2>
-          <button onClick={onClose} className="text-zinc-500 hover:text-white transition-colors">
+          <button onClick={onClose} className="p-2 -mr-2 text-zinc-500 hover:text-white transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-5 overflow-y-auto flex-1">
+        {/* Scrollable Form Area with extra bottom padding for mobile keyboard */}
+        <form onSubmit={handleSubmit} className="p-6 space-y-6 overflow-y-auto flex-1 scrollbar-hide pb-32 md:pb-6">
           <div>
             <input
               type="text"
@@ -254,7 +257,7 @@ export const CreateMemoryModal = ({ isOpen, onClose }: CreateMemoryModalProps) =
             )}
           </div>
 
-          {/* NEW: Time Capsule Toggle UI */}
+          {/* Time Capsule Toggle UI */}
           <div className="p-4 rounded-2xl bg-vault-950/50 border border-vault-800">
             <label className="flex items-center justify-between cursor-pointer">
               <span className="text-sm font-medium text-white">Seal as Time Capsule</span>

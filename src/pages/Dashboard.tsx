@@ -7,7 +7,7 @@ import { useMemoryStore } from '../store/useMemoryStore';
 import { CreateMemoryModal } from '../components/CreateMemoryModal';
 import { ViewMemoryModal } from '../components/ViewMemoryModal';
 import { SettingsModal } from '../components/SettingsModal';
-import { MoodAnalytics } from '../components/MoodAnalytics'; // NEW: Import the Analytics
+import { MoodAnalytics } from '../components/MoodAnalytics';
 import { supabase } from '../lib/supabase';
 import type { Memory } from '../types';
 
@@ -25,7 +25,6 @@ export const Dashboard = () => {
   const [selectedMemory, setSelectedMemory] = useState<Memory | null>(null);
   const [userEmail, setUserEmail] = useState<string | undefined>();
   
-  // NEW: State to toggle between the Vault list and the Analytics chart
   const [activeView, setActiveView] = useState<'vault' | 'insights'>('vault');
 
   useEffect(() => {
@@ -61,105 +60,111 @@ export const Dashboard = () => {
   }, []);
 
   return (
-    <div className="min-h-screen text-vault-100 font-sans selection:bg-zinc-800">
+    <div className="min-h-screen text-vault-100 font-sans selection:bg-zinc-800 bg-black">
       <AmbientBackground />
       
-      <main className="max-w-2xl mx-auto px-5 pt-12 pb-32 md:pt-32">
-        <motion.header 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-          className="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-6"
-        >
-          <div className="space-y-3">
-            <p className="text-zinc-500 text-xs md:text-sm font-medium tracking-wide uppercase">
-              {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-            </p>
-            <h1 className="text-3xl md:text-4xl font-serif tracking-tight text-white leading-tight">
-              {greeting}
-            </h1>
-          </div>
-          
-          <div className="flex items-center gap-3">
-            <button 
-              onClick={() => setIsSettingsOpen(true)}
-              className="flex items-center justify-center w-12 h-12 rounded-full bg-vault-900/50 backdrop-blur-md border border-vault-800 text-zinc-400 hover:text-white transition-all"
-            >
-              <Settings className="w-5 h-5" />
-            </button>
-
-            <button 
-              onClick={() => setIsCreateOpen(true)}
-              className="flex items-center gap-2 px-5 py-3 h-12 rounded-full bg-white text-black text-sm font-medium transition-transform hover:scale-105 active:scale-95 shadow-xl"
-            >
-              <Plus className="w-4 h-4" />
-              Preserve
-            </button>
-          </div>
-        </motion.header>
-
-        {/* NEW: View Toggle */}
-        <div className="flex items-center gap-2 mb-8 bg-vault-950/40 p-1.5 rounded-2xl border border-vault-800/50 w-fit">
-          <button 
-            onClick={() => setActiveView('vault')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-medium transition-all ${activeView === 'vault' ? 'bg-vault-800 text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-300'}`}
+      {/* THE VAULT DOOR TRANSITION */}
+      <motion.div
+        initial={{ opacity: 0, scale: 1.05, filter: 'blur(10px)' }}
+        animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
+        transition={{ duration: 1.5, ease: [0.16, 1, 0.3, 1] }}
+      >
+        <main className="max-w-2xl mx-auto px-5 pt-12 pb-32 md:pt-32 relative z-10">
+          <motion.header 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+            className="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-6"
           >
-            <LayoutGrid className="w-4 h-4" /> The Vault
-          </button>
-          <button 
-            onClick={() => setActiveView('insights')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-medium transition-all ${activeView === 'insights' ? 'bg-vault-800 text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-300'}`}
-          >
-            <LineChart className="w-4 h-4" /> Insights
-          </button>
-        </div>
+            <div className="space-y-3">
+              <p className="text-zinc-500 text-xs md:text-sm font-medium tracking-wide uppercase">
+                {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+              </p>
+              <h1 className="text-3xl md:text-4xl font-serif tracking-tight text-white leading-tight">
+                {greeting}
+              </h1>
+            </div>
+            
+            <div className="flex items-center gap-3">
+              <button 
+                onClick={() => setIsSettingsOpen(true)}
+                className="flex items-center justify-center w-12 h-12 rounded-full bg-vault-900/50 backdrop-blur-md border border-vault-800 text-zinc-400 hover:text-white transition-all"
+              >
+                <Settings className="w-5 h-5" />
+              </button>
 
-        <section className="space-y-12">
-          {activeView === 'insights' ? (
-            <MoodAnalytics memories={memories} />
-          ) : (
-            <>
-              {onThisDayMemories.length > 0 && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                  <div className="flex items-center gap-2 mb-6 text-amber-500">
-                    <Sparkles className="w-4 h-4" />
-                    <h2 className="text-xs font-medium tracking-widest uppercase">On This Day</h2>
-                  </div>
-                  <div className="space-y-4">
-                    {onThisDayMemories.map((memory) => (
-                      <div key={memory.id} className="relative group">
-                        <div className="absolute -inset-0.5 bg-gradient-to-r from-amber-500/20 to-orange-500/20 rounded-3xl blur opacity-50 group-hover:opacity-100 transition duration-1000"></div>
-                        <div className="relative">
-                          <MemoryCard memory={memory} onClick={() => setSelectedMemory(memory)} />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </motion.div>
-              )}
+              <button 
+                onClick={() => setIsCreateOpen(true)}
+                className="flex items-center gap-2 px-5 py-3 h-12 rounded-full bg-white text-black text-sm font-medium transition-transform hover:scale-105 active:scale-95 shadow-xl"
+              >
+                <Plus className="w-4 h-4" />
+                Preserve
+              </button>
+            </div>
+          </motion.header>
 
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+          <div className="flex items-center gap-2 mb-8 bg-vault-950/40 p-1.5 rounded-2xl border border-vault-800/50 w-fit">
+            <button 
+              onClick={() => setActiveView('vault')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-medium transition-all ${activeView === 'vault' ? 'bg-vault-800 text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-300'}`}
+            >
+              <LayoutGrid className="w-4 h-4" /> The Vault
+            </button>
+            <button 
+              onClick={() => setActiveView('insights')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-medium transition-all ${activeView === 'insights' ? 'bg-vault-800 text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-300'}`}
+            >
+              <LineChart className="w-4 h-4" /> Insights
+            </button>
+          </div>
+
+          <section className="space-y-12">
+            {activeView === 'insights' ? (
+              <MoodAnalytics memories={memories} />
+            ) : (
+              <>
                 {onThisDayMemories.length > 0 && (
-                  <h2 className="text-xs font-medium text-zinc-500 tracking-wider uppercase mb-6">
-                    Recent Archives
-                  </h2>
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                    <div className="flex items-center gap-2 mb-6 text-amber-500">
+                      <Sparkles className="w-4 h-4" />
+                      <h2 className="text-xs font-medium tracking-widest uppercase">On This Day</h2>
+                    </div>
+                    <div className="space-y-4">
+                      {onThisDayMemories.map((memory) => (
+                        <div key={memory.id} className="relative group">
+                          <div className="absolute -inset-0.5 bg-gradient-to-r from-amber-500/20 to-orange-500/20 rounded-3xl blur opacity-50 group-hover:opacity-100 transition duration-1000"></div>
+                          <div className="relative">
+                            <MemoryCard memory={memory} onClick={() => setSelectedMemory(memory)} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </motion.div>
                 )}
-                <motion.div variants={containerVariants} initial="hidden" animate="show" className="space-y-4">
-                  {regularMemories.length === 0 && onThisDayMemories.length === 0 ? (
-                    <motion.div className="py-12 text-center border border-dashed border-vault-800 rounded-3xl bg-vault-900/20">
-                      <p className="text-sm text-zinc-500">Your vault is empty. Begin writing.</p>
-                    </motion.div>
-                  ) : (
-                    regularMemories.map((memory) => (
-                      <MemoryCard key={memory.id} memory={memory} onClick={() => setSelectedMemory(memory)} />
-                    ))
+
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                  {onThisDayMemories.length > 0 && (
+                    <h2 className="text-xs font-medium text-zinc-500 tracking-wider uppercase mb-6">
+                      Recent Archives
+                    </h2>
                   )}
+                  <motion.div variants={containerVariants} initial="hidden" animate="show" className="space-y-4">
+                    {regularMemories.length === 0 && onThisDayMemories.length === 0 ? (
+                      <motion.div className="py-12 text-center border border-dashed border-vault-800 rounded-3xl bg-vault-900/20">
+                        <p className="text-sm text-zinc-500">Your vault is empty. Begin writing.</p>
+                      </motion.div>
+                    ) : (
+                      regularMemories.map((memory) => (
+                        <MemoryCard key={memory.id} memory={memory} onClick={() => setSelectedMemory(memory)} />
+                      ))
+                    )}
+                  </motion.div>
                 </motion.div>
-              </motion.div>
-            </>
-          )}
-        </section>
-      </main>
+              </>
+            )}
+          </section>
+        </main>
+      </motion.div>
 
       <CreateMemoryModal isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)} />
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} email={userEmail} />
