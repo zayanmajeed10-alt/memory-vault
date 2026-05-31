@@ -37,11 +37,12 @@ export const MemoryCard = ({ memory, onClick }: Props) => {
           </span>
           {/* Here is the new Delete Button */}
           <button 
-            onClick={handleDelete}
-            className="text-zinc-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity p-1"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
+  onClick={handleDelete}
+  // We added md: to the opacity rules to target laptops, and left it visible for mobile
+  className="text-zinc-600 hover:text-red-400 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity p-1"
+>
+  <Trash2 className="w-4 h-4" />
+</button>
         </div>
       </div>
 
