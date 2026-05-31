@@ -1,5 +1,7 @@
 import { useState, useRef } from 'react';
 import { X, Image, Mic, Square, Trash2 } from 'lucide-react';
+// NEW: Imported motion for the smooth dropdown animation
+import { motion } from 'framer-motion'; 
 import { useMemoryStore } from '../store/useMemoryStore';
 import { supabase } from '../lib/supabase';
 import type { Mood } from '../types';
@@ -19,6 +21,10 @@ export const CreateMemoryModal = ({ isOpen, onClose }: CreateMemoryModalProps) =
   const [title, setTitle] = useState('');
   const [reflection, setReflection] = useState('');
   const [mood, setMood] = useState<Mood>('peaceful');
+
+  // NEW: Time Capsule State
+  const [isSealed, setIsSealed] = useState(false);
+  const [unlockDate, setUnlockDate] = useState('');
 
   // Media Files State
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -57,7 +63,6 @@ export const CreateMemoryModal = ({ isOpen, onClose }: CreateMemoryModalProps) =
       };
 
       mediaRecorder.onstop = () => {
-        // FIX: Let the browser use its native audio format instead of forcing WAV
         const actualMimeType = mediaRecorder.mimeType || 'audio/webm';
         const blob = new Blob(audioChunksRef.current, { type: actualMimeType });
         
@@ -107,7 +112,6 @@ export const CreateMemoryModal = ({ isOpen, onClose }: CreateMemoryModalProps) =
       }
       
       if (audioBlob) {
-        // FIX: dynamically assign the correct file extension so playback doesn't break
         const ext = audioBlob.type.includes('mp4') ? 'm4a' : 'webm';
         audio_url = await uploadMediaFile(audioBlob, 'audio', ext);
       }
@@ -117,7 +121,9 @@ export const CreateMemoryModal = ({ isOpen, onClose }: CreateMemoryModalProps) =
         reflection,
         mood,
         image_url,
-        audio_url
+        audio_url,
+        // NEW: Injects the unlock date into the database if the vault is sealed
+        unlock_date: isSealed && unlockDate ? new Date(unlockDate).toISOString() : null, 
       });
 
       // Reset state and close
@@ -128,6 +134,8 @@ export const CreateMemoryModal = ({ isOpen, onClose }: CreateMemoryModalProps) =
       setImagePreview(null);
       setAudioBlob(null);
       setAudioPreview(null);
+      setIsSealed(false); // NEW: Reset seal
+      setUnlockDate('');  // NEW: Reset date
       onClose();
     } catch (err) {
       console.error('Error saving memory:', err);
@@ -243,6 +251,39 @@ export const CreateMemoryModal = ({ isOpen, onClose }: CreateMemoryModalProps) =
               >
                 <Mic className="w-4 h-4" /> Record Voice Memo
               </button>
+            )}
+          </div>
+
+          {/* NEW: Time Capsule Toggle UI */}
+          <div className="p-4 rounded-2xl bg-vault-950/50 border border-vault-800">
+            <label className="flex items-center justify-between cursor-pointer">
+              <span className="text-sm font-medium text-white">Seal as Time Capsule</span>
+              <input 
+                type="checkbox" 
+                checked={isSealed}
+                onChange={(e) => setIsSealed(e.target.checked)}
+                className="w-4 h-4 accent-white bg-vault-900 border-vault-700 rounded"
+              />
+            </label>
+            
+            {isSealed && (
+              <motion.div 
+                initial={{ opacity: 0, height: 0 }} 
+                animate={{ opacity: 1, height: 'auto' }} 
+                className="mt-4"
+              >
+                <input
+                  type="date"
+                  min={new Date(Date.now() + 86400000).toISOString().split('T')[0]} 
+                  value={unlockDate}
+                  onChange={(e) => setUnlockDate(e.target.value)}
+                  className="w-full bg-vault-950 text-white px-4 py-3 rounded-xl border border-vault-800 focus:outline-none focus:border-zinc-500"
+                  required={isSealed}
+                />
+                <p className="text-xs text-zinc-500 mt-2">
+                  This memory will be locked and unreadable until this date.
+                </p>
+              </motion.div>
             )}
           </div>
 

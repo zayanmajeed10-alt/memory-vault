@@ -19,8 +19,6 @@ export const ViewMemoryModal = ({ memory, isOpen, onClose }: Props) => {
 
     const fetchSecureMedia = async () => {
       setIsLoadingMedia(true);
-      
-      // Request secure, temporary decryption links for the private bucket
       if (memory.image_url) {
         const { data } = await supabase.storage.from('vault-media').createSignedUrl(memory.image_url, 3600);
         if (data) setImageUrl(data.signedUrl);
@@ -34,7 +32,6 @@ export const ViewMemoryModal = ({ memory, isOpen, onClose }: Props) => {
       } else {
         setAudioUrl(null);
       }
-      
       setIsLoadingMedia(false);
     };
 
@@ -44,56 +41,59 @@ export const ViewMemoryModal = ({ memory, isOpen, onClose }: Props) => {
   if (!isOpen || !memory) return null;
 
   const formattedDate = new Date(memory.created_at).toLocaleDateString('en-US', {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric'
+    weekday: 'long', month: 'long', day: 'numeric', year: 'numeric'
   });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
-      <div className="w-full max-w-2xl bg-vault-900 border border-vault-800 rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-0 md:p-6 bg-black/95 backdrop-blur-3xl animate-in fade-in duration-500">
+      <div className="w-full h-full md:h-auto md:max-h-[90vh] max-w-3xl bg-transparent md:bg-vault-900/20 md:border border-vault-800/50 md:rounded-[2.5rem] overflow-hidden flex flex-col animate-in slide-in-from-bottom-8 duration-700">
         
-        {/* Cinematic Header */}
-        <div className="flex items-center justify-between p-6 border-b border-vault-800">
-          <div className="flex items-center gap-3">
-            <span className={`px-3 py-1 text-xs font-medium uppercase tracking-wider rounded-full bg-vault-800 text-zinc-300`}>
+        {/* Minimalist Cinematic Header */}
+        <div className="flex items-center justify-between p-6 md:p-8">
+          <div className="flex items-center gap-4">
+            <span className="px-3 py-1 text-xs font-medium uppercase tracking-widest rounded-full border border-vault-800 text-zinc-400">
               {memory.mood}
             </span>
-            <span className="flex items-center gap-1.5 text-xs text-zinc-500">
-              <Calendar className="w-3.5 h-3.5" />
+            <span className="flex items-center gap-2 text-sm text-zinc-500 font-medium tracking-wide">
+              <Calendar className="w-4 h-4" />
               {formattedDate}
             </span>
           </div>
-          <button onClick={onClose} className="text-zinc-500 hover:text-white transition-colors">
+          <button onClick={onClose} className="p-3 bg-vault-900/50 rounded-full text-zinc-400 hover:text-white hover:bg-vault-800 transition-all cursor-pointer backdrop-blur-md">
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Content Area */}
-        <div className="p-6 overflow-y-auto space-y-6">
-          <h2 className="text-3xl font-serif text-white tracking-tight">{memory.title}</h2>
+        {/* Editorial Content Area */}
+        <div className="p-6 md:p-12 overflow-y-auto space-y-10 scrollbar-hide">
+          <h2 className="text-4xl md:text-5xl font-serif text-white/90 leading-tight tracking-tight">
+            {memory.title}
+          </h2>
           
-          <p className="text-zinc-300 leading-relaxed whitespace-pre-wrap text-lg">
+          <p className="text-zinc-400 leading-relaxed whitespace-pre-wrap text-lg md:text-xl font-light">
             {memory.reflection}
           </p>
 
-          {/* Secure Media Injection */}
+          {/* Secure Media Injection with Slow Pan */}
           {(memory.image_url || memory.audio_url) && (
-            <div className="pt-6 border-t border-vault-800/50 space-y-4">
+            <div className="pt-8 space-y-6">
               {isLoadingMedia ? (
-                <div className="text-sm text-zinc-500 animate-pulse">Decrypting secure media vault...</div>
+                <div className="text-sm text-zinc-600 animate-pulse tracking-widest uppercase">Decrypting...</div>
               ) : (
                 <>
                   {imageUrl && (
-                    <div className="rounded-2xl overflow-hidden border border-vault-800 bg-vault-950">
-                      <img src={imageUrl} alt="Memory attachment" className="w-full h-auto max-h-[500px] object-cover" />
+                    <div className="rounded-2xl overflow-hidden bg-black relative group">
+                      <img 
+                        src={imageUrl} 
+                        alt="Memory attachment" 
+                        className="w-full h-auto max-h-[600px] object-cover opacity-80 group-hover:opacity-100 group-hover:scale-105 transition-all duration-[2000ms] ease-out" 
+                      />
                     </div>
                   )}
                   
                   {audioUrl && (
-                    <div className="flex items-center gap-4 p-4 rounded-2xl border border-vault-800 bg-vault-950">
-                      <div className="p-3 bg-vault-800 rounded-full text-zinc-400">
+                    <div className="flex items-center gap-4 p-4 rounded-3xl border border-vault-800/50 bg-vault-900/30 backdrop-blur-md">
+                      <div className="p-4 bg-black rounded-full text-zinc-400 shadow-inner">
                         <Mic className="w-5 h-5" />
                       </div>
                       <audio src={audioUrl} controls className="w-full accent-white" />

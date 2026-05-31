@@ -1,12 +1,13 @@
 import { useMemo, useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Settings } from 'lucide-react';
+import { Plus, Settings, Sparkles, LayoutGrid, LineChart } from 'lucide-react';
 import { AmbientBackground } from '../components/AmbientBackground';
 import { MemoryCard } from '../components/MemoryCard';
 import { useMemoryStore } from '../store/useMemoryStore';
 import { CreateMemoryModal } from '../components/CreateMemoryModal';
 import { ViewMemoryModal } from '../components/ViewMemoryModal';
-import { SettingsModal } from '../components/SettingsModal'; // We import the new Settings Panel
+import { SettingsModal } from '../components/SettingsModal';
+import { MoodAnalytics } from '../components/MoodAnalytics'; // NEW: Import the Analytics
 import { supabase } from '../lib/supabase';
 import type { Memory } from '../types';
 
@@ -23,14 +24,32 @@ export const Dashboard = () => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [selectedMemory, setSelectedMemory] = useState<Memory | null>(null);
   const [userEmail, setUserEmail] = useState<string | undefined>();
+  
+  // NEW: State to toggle between the Vault list and the Analytics chart
+  const [activeView, setActiveView] = useState<'vault' | 'insights'>('vault');
 
   useEffect(() => {
     fetchMemories();
-    // This grabs the logged-in user's email to show inside the settings panel
     supabase.auth.getUser().then(({ data }) => {
       setUserEmail(data.user?.email);
     });
   }, [fetchMemories]);
+
+  const today = new Date();
+  const onThisDayMemories = useMemo(() => {
+    return memories.filter(memory => {
+      const memDate = new Date(memory.created_at);
+      return (
+        memDate.getDate() === today.getDate() &&
+        memDate.getMonth() === today.getMonth() &&
+        memDate.getFullYear() !== today.getFullYear()
+      );
+    });
+  }, [memories, today]);
+
+  const regularMemories = useMemo(() => {
+    return memories.filter(m => !onThisDayMemories.includes(m));
+  }, [memories, onThisDayMemories]);
 
   const greeting = useMemo(() => {
     const hour = new Date().getHours();
@@ -50,7 +69,7 @@ export const Dashboard = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-          className="mb-12 flex flex-col md:flex-row md:items-end justify-between gap-6"
+          className="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-6"
         >
           <div className="space-y-3">
             <p className="text-zinc-500 text-xs md:text-sm font-medium tracking-wide uppercase">
@@ -62,7 +81,6 @@ export const Dashboard = () => {
           </div>
           
           <div className="flex items-center gap-3">
-            {/* The new Settings Gear Button */}
             <button 
               onClick={() => setIsSettingsOpen(true)}
               className="flex items-center justify-center w-12 h-12 rounded-full bg-vault-900/50 backdrop-blur-md border border-vault-800 text-zinc-400 hover:text-white transition-all"
@@ -80,41 +98,66 @@ export const Dashboard = () => {
           </div>
         </motion.header>
 
-        <section>
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.4, duration: 1 }}
-            className="flex items-center justify-between mb-6"
+        {/* NEW: View Toggle */}
+        <div className="flex items-center gap-2 mb-8 bg-vault-950/40 p-1.5 rounded-2xl border border-vault-800/50 w-fit">
+          <button 
+            onClick={() => setActiveView('vault')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-medium transition-all ${activeView === 'vault' ? 'bg-vault-800 text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-300'}`}
           >
-            <h2 className="text-xs font-medium text-zinc-500 tracking-wider uppercase">
-              Recent Archives
-            </h2>
-          </motion.div>
+            <LayoutGrid className="w-4 h-4" /> The Vault
+          </button>
+          <button 
+            onClick={() => setActiveView('insights')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-medium transition-all ${activeView === 'insights' ? 'bg-vault-800 text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-300'}`}
+          >
+            <LineChart className="w-4 h-4" /> Insights
+          </button>
+        </div>
 
-          <motion.div 
-            variants={containerVariants}
-            initial="hidden"
-            animate="show"
-            className="space-y-4"
-          >
-            {memories.length === 0 ? (
-              <motion.div 
-                variants={{ hidden: { opacity: 0 }, show: { opacity: 1 } }}
-                className="py-12 text-center border border-dashed border-vault-800 rounded-3xl bg-vault-900/20"
-              >
-                <p className="text-sm text-zinc-500">Your vault is empty. Begin writing.</p>
+        <section className="space-y-12">
+          {activeView === 'insights' ? (
+            <MoodAnalytics memories={memories} />
+          ) : (
+            <>
+              {onThisDayMemories.length > 0 && (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                  <div className="flex items-center gap-2 mb-6 text-amber-500">
+                    <Sparkles className="w-4 h-4" />
+                    <h2 className="text-xs font-medium tracking-widest uppercase">On This Day</h2>
+                  </div>
+                  <div className="space-y-4">
+                    {onThisDayMemories.map((memory) => (
+                      <div key={memory.id} className="relative group">
+                        <div className="absolute -inset-0.5 bg-gradient-to-r from-amber-500/20 to-orange-500/20 rounded-3xl blur opacity-50 group-hover:opacity-100 transition duration-1000"></div>
+                        <div className="relative">
+                          <MemoryCard memory={memory} onClick={() => setSelectedMemory(memory)} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                {onThisDayMemories.length > 0 && (
+                  <h2 className="text-xs font-medium text-zinc-500 tracking-wider uppercase mb-6">
+                    Recent Archives
+                  </h2>
+                )}
+                <motion.div variants={containerVariants} initial="hidden" animate="show" className="space-y-4">
+                  {regularMemories.length === 0 && onThisDayMemories.length === 0 ? (
+                    <motion.div className="py-12 text-center border border-dashed border-vault-800 rounded-3xl bg-vault-900/20">
+                      <p className="text-sm text-zinc-500">Your vault is empty. Begin writing.</p>
+                    </motion.div>
+                  ) : (
+                    regularMemories.map((memory) => (
+                      <MemoryCard key={memory.id} memory={memory} onClick={() => setSelectedMemory(memory)} />
+                    ))
+                  )}
+                </motion.div>
               </motion.div>
-            ) : (
-              memories.map((memory) => (
-                <MemoryCard 
-                  key={memory.id} 
-                  memory={memory} 
-                  onClick={() => setSelectedMemory(memory)} 
-                />
-              ))
-            )}
-          </motion.div>
+            </>
+          )}
         </section>
       </main>
 

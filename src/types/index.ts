@@ -10,4 +10,5 @@ export interface Memory {
   audio_url?: string | null;
   location?: string | null;
   created_at: string;
+  unlock_date?: string | null;
 }
