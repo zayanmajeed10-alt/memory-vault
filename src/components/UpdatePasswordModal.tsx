@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Lock, CheckCircle2 } from 'lucide-react';
-import { motion } from 'framer-motion';
 import { supabase } from '../lib/supabase';
 
 interface Props {
