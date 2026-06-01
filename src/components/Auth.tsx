@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Eye, EyeOff, ScanFace } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { AmbientBackground } from './AmbientBackground';
+import { ForgotPasswordModal } from './ForgotPasswordModal';
 
 export const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -11,6 +12,9 @@ export const Auth = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // NEW: State to control the Forgot Password Modal
+  const [isForgotOpen, setIsForgotOpen] = useState(false);
 
   const handlePasswordAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,6 +54,7 @@ export const Auth = () => {
       setIsLoading(false);
     }
   };
+  
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-5 text-vault-100 font-sans selection:bg-zinc-800">
       <AmbientBackground />
@@ -58,7 +63,7 @@ export const Auth = () => {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-        className="w-full max-w-md bg-vault-900/60 backdrop-blur-md border border-vault-800 p-8 rounded-3xl shadow-2xl"
+        className="w-full max-w-md bg-vault-900/60 backdrop-blur-md border border-vault-800 p-8 rounded-3xl shadow-2xl relative z-10"
       >
         <div className="text-center mb-8">
           <h1 className="text-3xl font-serif tracking-tight text-white mb-2">Memory Vault</h1>
@@ -83,22 +88,37 @@ export const Auth = () => {
             />
           </div>
           
-          <div className="relative">
-            <input
-              type={showPassword ? "text" : "password"}
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full bg-vault-950/50 text-white placeholder:text-zinc-600 px-4 py-3 rounded-xl border border-vault-800 focus:outline-none focus:border-zinc-500 transition-colors pr-12"
-              required={!isLogin} 
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white transition-colors focus:outline-none"
-            >
-              {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-            </button>
+          <div>
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full bg-vault-950/50 text-white placeholder:text-zinc-600 px-4 py-3 rounded-xl border border-vault-800 focus:outline-none focus:border-zinc-500 transition-colors pr-12"
+                required={!isLogin} 
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white transition-colors focus:outline-none"
+              >
+                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              </button>
+            </div>
+            
+            {/* NEW: Forgot Password Button (Only shows during Login) */}
+            {isLogin && (
+              <div className="flex justify-end mt-2">
+                <button 
+                  type="button"
+                  onClick={() => setIsForgotOpen(true)}
+                  className="text-xs text-zinc-500 hover:text-white transition-colors"
+                >
+                  Forgot your password?
+                </button>
+              </div>
+            )}
           </div>
 
           <button
@@ -135,6 +155,12 @@ export const Auth = () => {
           </button>
         </div>
       </motion.div>
+
+      {/* NEW: The Forgot Password Modal */}
+      <ForgotPasswordModal 
+        isOpen={isForgotOpen} 
+        onClose={() => setIsForgotOpen(false)} 
+      />
     </div>
   );
 };
